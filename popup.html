@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MS Rewards Auto-Searcher</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --border: #1e1e2e;
+      --accent: #00e5ff;
+      --accent2: #7c3aed;
+      --green: #00ff88;
+      --red: #ff3b5c;
+      --text: #e8e8f0;
+      --muted: #5a5a72;
+      --card: #13131c;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 340px;
+      min-height: 420px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      padding: 20px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      box-shadow: 0 0 12px rgba(0,229,255,0.3);
+    }
+
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      color: var(--text);
+    }
+
+    .logo-text span {
+      color: var(--accent);
+    }
+
+    .status-pill {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .status-pill.idle {
+      background: rgba(90,90,114,0.2);
+      border: 1px solid var(--muted);
+      color: var(--muted);
+    }
+
+    .status-pill.running {
+      background: rgba(0,255,136,0.1);
+      border: 1px solid var(--green);
+      color: var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* Progress ring */
+    .progress-section {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .ring-container {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      flex-shrink: 0;
+    }
+
+    .ring-container svg {
+      transform: rotate(-90deg);
+    }
+
+    .ring-bg { fill: none; stroke: var(--border); stroke-width: 5; }
+    .ring-fill {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-dasharray: 188;
+      stroke-dashoffset: 188;
+      transition: stroke-dashoffset 0.8s ease;
+      filter: drop-shadow(0 0 4px var(--accent));
+    }
+
+    .ring-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+    }
+
+    .ring-count {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .ring-total {
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    .progress-info {
+      flex: 1;
+    }
+
+    .progress-label {
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .current-term {
+      font-size: 9px;
+      color: var(--muted);
+      line-height: 1.5;
+      word-break: break-word;
+      min-height: 28px;
+    }
+
+    .current-term.searching {
+      color: var(--accent);
+    }
+
+    /* Progress bar */
+    .bar-section {
+      margin-bottom: 14px;
+    }
+
+    .bar-track {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.8s ease;
+      box-shadow: 0 0 8px rgba(0,229,255,0.4);
+    }
+
+    /* Info grid */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .info-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .info-card .label {
+      font-size: 8px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .info-card .value {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .info-card .value.accent { color: var(--accent); }
+    .info-card .value.green { color: var(--green); }
+
+    /* Timer */
+    .timer-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      display: none;
+    }
+
+    .timer-section.visible { display: flex; }
+
+    .timer-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: blink 1s infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .timer-text {
+      font-size: 10px;
+      color: var(--muted);
+      flex: 1;
+    }
+
+    .timer-countdown {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    /* Main button */
+    .btn {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.05);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .btn:hover::after { opacity: 1; }
+
+    .btn-start {
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      color: #000;
+      box-shadow: 0 0 20px rgba(0,229,255,0.2);
+    }
+
+    .btn-start:hover {
+      box-shadow: 0 0 30px rgba(0,229,255,0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-stop {
+      background: rgba(255,59,92,0.1);
+      border: 1px solid var(--red);
+      color: var(--red);
+    }
+
+    .btn-stop:hover {
+      background: rgba(255,59,92,0.2);
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-note {
+      font-size: 8px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    .rewards-link {
+      font-size: 8px;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: 0.05em;
+    }
+
+    .rewards-link:hover { text-decoration: underline; }
+
+    /* Done banner */
+    .done-banner {
+      background: rgba(0,255,136,0.08);
+      border: 1px solid rgba(0,255,136,0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .done-banner.visible { display: block; }
+
+    .done-banner .title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 11px;
+      color: var(--green);
+      margin-bottom: 2px;
+    }
+
+    .done-banner .sub {
+      font-size: 9px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">
+        <div class="logo-icon">🎯</div>
+        <div class="logo-text">REWARDS<span>BOT</span></div>
+      </div>
+      <div class="status-pill idle" id="statusPill">IDLE</div>
+    </div>
+
+    <!-- Progress Ring -->
+    <div class="progress-section">
+      <div class="ring-container">
+        <svg width="72" height="72" viewBox="0 0 72 72">
+          <circle class="ring-bg" cx="36" cy="36" r="30"/>
+          <circle class="ring-fill" id="ringFill" cx="36" cy="36" r="30"/>
+        </svg>
+        <div class="ring-label">
+          <div class="ring-count" id="ringCount">0</div>
+          <div class="ring-total">/ 30</div>
+        </div>
+      </div>
+      <div class="progress-info">
+        <div class="progress-label" id="progressLabel">Ready to search</div>
+        <div class="current-term" id="currentTerm">Click Start to begin 30 human-paced Bing searches and earn Microsoft Rewards points.</div>
+      </div>
+    </div>
+
+    <!-- Bar -->
+    <div class="bar-section">
+      <div class="bar-track">
+        <div class="bar-fill" id="barFill"></div>
+      </div>
+    </div>
+
+    <!-- Info Grid -->
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="label">Completed</div>
+        <div class="value accent" id="completedVal">0 / 30</div>
+      </div>
+      <div class="info-card">
+        <div class="label">Est. Points</div>
+        <div class="value green" id="pointsVal">+0 pts</div>
+      </div>
+      <div class="info-card">
+        <div class="label">Pace</div>
+        <div class="value">20–40s</div>
+      </div>
+      <div class="info-card">
+        <div class="label">Last Run</div>
+        <div class="value" id="lastRun" style="font-size:10px">Never</div>
+      </div>
+    </div>
+
+    <!-- Done Banner -->
+    <div class="done-banner" id="doneBanner">
+      <div class="title">✅ Session complete!</div>
+      <div class="sub" id="doneSub">All searches done. Check rewards.microsoft.com</div>
+    </div>
+
+    <!-- Next search timer -->
+    <div class="timer-section" id="timerSection">
+      <div class="timer-dot"></div>
+      <div class="timer-text">Next search in</div>
+      <div class="timer-countdown" id="timerCountdown">—</div>
+    </div>
+
+    <!-- Button -->
+    <button class="btn btn-start" id="mainBtn">
+      ▶ START SESSION
+    </button>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-note">30 searches · Tech & News terms</div>
+      <a class="rewards-link" href="https://rewards.microsoft.com" target="_blank">rewards.microsoft.com ↗</a>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
