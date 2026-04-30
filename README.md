@@ -9,7 +9,7 @@ Automatically runs **30 human-paced Bing searches** on your behalf to earn Micro
 2. Open **Microsoft Edge** and go to: `edge://extensions/`
 3. Toggle **"Developer mode"** ON (top-right).
 4. Click **"Load unpacked"**.
-5. Select the unzipped folder (`ms-rewards-ext`).
+5. Select the unzipped folder.
 6. The extension icon appears in your toolbar. **Pin it** for easy access.
 
 

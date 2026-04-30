@@ -1,143 +1,97 @@
-// popup.js
+let interval = null;
+let nextTime = null;
 
-let countdownInterval = null;
-let nextSearchTimestamp = null;
+const qs = (id) => document.getElementById(id);
+
+function formatTime(ms) {
+  return Math.ceil(ms / 1000) + "s";
+}
+
+function startTimer() {
+  clearInterval(interval);
+  interval = setInterval(() => {
+    if (!nextTime) return;
+    const remaining = Math.max(0, nextTime - Date.now());
+    qs("timerVal").textContent = formatTime(remaining);
+  }, 500);
+}
 
 async function getStatus() {
-  return new Promise(resolve => {
-    chrome.runtime.sendMessage({ action: "GET_STATUS" }, resolve);
+  return new Promise((res) => {
+    chrome.runtime.sendMessage({ action: "GET_STATUS" }, res);
   });
 }
 
 function updateUI(data) {
-  const { sessionActive, completedSearches, totalSearches, currentTerm, lastSessionDate, lastCompleted, nextSearchIn } = data;
+  const {
+    sessionActive,
+    phase,
+    pcCompleted = 0,
+    pcTotal = 30,
+    mobileCompleted = 0,
+    mobileTotal = 30,
+    nextSearchIn = 0,
+    pcCurrentTerm = "",
+    mobileCurrentTerm = "",
+    lastSessionDate = "Never"
+  } = data;
 
-  const pct = totalSearches > 0 ? completedSearches / totalSearches : 0;
-  const circumference = 188;
+  // Counts & Progress
+  qs("pcCount").textContent = pcCompleted;
+  qs("mobileCount").textContent = mobileCompleted;
+  qs("pcBar").style.width = (pcCompleted / pcTotal) * 100 + "%";
+  qs("mobileBar").style.width = (mobileCompleted / mobileTotal) * 100 + "%";
 
-  // Ring
-  document.getElementById("ringCount").textContent = completedSearches;
-  document.getElementById("ringFill").style.strokeDashoffset = circumference - (pct * circumference);
+  // Status Pill
+  const pill = qs("statusPill");
+  pill.textContent = sessionActive ? (phase === "pc" ? "DESKTOP" : "MOBILE") : (phase === "done" ? "DONE" : "IDLE");
+  pill.className = "status-pill";
+  if (sessionActive) pill.classList.add("active");
+  if (phase === "done") pill.classList.add("done");
 
-  // Bar
-  document.getElementById("barFill").style.width = (pct * 100) + "%";
+  // Current Term
+  const term = phase === "pc" ? pcCurrentTerm : (phase === "mobile" ? mobileCurrentTerm : "");
+  qs("termText").textContent = sessionActive ? (term || "...") : (phase === "done" ? "Done" : "—");
 
-  // Info
-  document.getElementById("completedVal").textContent = `${completedSearches} / ${totalSearches}`;
-  document.getElementById("pointsVal").textContent = `+${completedSearches * 5} pts`;
+  // Stats
+  qs("pointsVal").textContent = ((pcCompleted + mobileCompleted) * 5);
+  qs("lastRun").textContent = "Last run: " + lastSessionDate;
 
-  // Last run
-  const lastRunEl = document.getElementById("lastRun");
-  if (lastSessionDate) {
-    const today = new Date().toDateString();
-    lastRunEl.textContent = lastSessionDate === today ? "Today" : lastSessionDate;
+  // Banner
+  qs("doneBanner").classList.toggle("visible", phase === "done");
+
+  // Main Button
+  const btn = qs("mainBtn");
+  btn.textContent = sessionActive ? "Stop Session" : (phase === "done" ? "Restart Session" : "Start Session");
+  btn.className = sessionActive ? "btn btn-stop" : "btn";
+
+  // Timer
+  if (sessionActive && nextSearchIn > 0) {
+    qs("timerRow").classList.add("visible");
+    nextTime = Date.now() + nextSearchIn;
+    startTimer();
   } else {
-    lastRunEl.textContent = "Never";
-  }
-
-  // Status pill + button
-  const pill = document.getElementById("statusPill");
-  const btn = document.getElementById("mainBtn");
-  const termEl = document.getElementById("currentTerm");
-  const labelEl = document.getElementById("progressLabel");
-  const timerSection = document.getElementById("timerSection");
-
-  if (sessionActive) {
-    pill.className = "status-pill running";
-    pill.textContent = "RUNNING";
-    btn.className = "btn btn-stop";
-    btn.textContent = "⏹ STOP SESSION";
-    labelEl.textContent = `Searching... (${completedSearches}/${totalSearches})`;
-    termEl.className = "current-term searching";
-    termEl.textContent = currentTerm ? `🔍 "${currentTerm}"` : "Starting...";
-    document.getElementById("doneBanner").classList.remove("visible");
-
-    // Timer
-    if (nextSearchIn > 0 && completedSearches > 0 && completedSearches < totalSearches) {
-      timerSection.classList.add("visible");
-      if (!nextSearchTimestamp) {
-        nextSearchTimestamp = Date.now() + nextSearchIn;
-        startCountdown();
-      }
-    }
-  } else {
-    pill.className = "status-pill idle";
-    pill.textContent = "IDLE";
-    btn.className = "btn btn-start";
-    btn.textContent = "▶ START SESSION";
-    timerSection.classList.remove("visible");
-    clearCountdownInterval();
-    nextSearchTimestamp = null;
-
-    if (completedSearches > 0 && completedSearches === totalSearches) {
-      labelEl.textContent = "Session complete!";
-      termEl.className = "current-term";
-      termEl.textContent = "All 30 searches done. Points on the way! ✅";
-      document.getElementById("doneBanner").classList.add("visible");
-      document.getElementById("doneSub").textContent = `Earned ~${totalSearches * 5} points. Check rewards.microsoft.com`;
-    } else if (completedSearches > 0) {
-      labelEl.textContent = "Session stopped";
-      termEl.className = "current-term";
-      termEl.textContent = `Stopped at ${completedSearches}/${totalSearches} searches.`;
-    } else {
-      labelEl.textContent = "Ready to search";
-      termEl.className = "current-term";
-      termEl.textContent = "Click Start to begin 30 human-paced Bing searches and earn Microsoft Rewards points.";
-    }
+    qs("timerRow").classList.remove("visible");
+    nextTime = null;
+    clearInterval(interval);
   }
 }
 
-function startCountdown() {
-  clearCountdownInterval();
-  countdownInterval = setInterval(() => {
-    if (!nextSearchTimestamp) return;
-    const remaining = Math.max(0, nextSearchTimestamp - Date.now());
-    const secs = Math.ceil(remaining / 1000);
-    document.getElementById("timerCountdown").textContent = secs + "s";
-    if (remaining <= 0) {
-      clearCountdownInterval();
-      nextSearchTimestamp = null;
-    }
-  }, 500);
-}
-
-function clearCountdownInterval() {
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-  }
-}
-
-async function handleBtn() {
+// Button click
+qs("mainBtn").addEventListener("click", async () => {
   const data = await getStatus();
-  if (data.sessionActive) {
-    await new Promise(resolve => chrome.runtime.sendMessage({ action: "STOP_SESSION" }, resolve));
-  } else {
-    nextSearchTimestamp = null;
-    clearCountdownInterval();
-    await new Promise(resolve => chrome.runtime.sendMessage({ action: "START_SESSION" }, resolve));
-  }
-  const newData = await getStatus();
-  updateUI(newData);
-}
+  const action = data.sessionActive ? "STOP_SESSION" : "START_SESSION";
+  
+  await new Promise((res) => chrome.runtime.sendMessage({ action }, res));
+  updateUI(await getStatus());
+});
 
-// Listen for live updates from background
+// Live updates
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === "STATUS_UPDATE") {
-    nextSearchTimestamp = null; // reset timer on each update
-    clearCountdownInterval();
-    getStatus().then(data => {
-      updateUI(data);
-      if (data.sessionActive && data.nextSearchIn > 0) {
-        nextSearchTimestamp = Date.now() + data.nextSearchIn;
-        startCountdown();
-      }
-    });
+    getStatus().then(updateUI);
   }
 });
 
 // Initial load
 getStatus().then(updateUI);
-
-// Attach button click via JS (CSP blocks inline onclick in extensions)
-document.getElementById("mainBtn").addEventListener("click", handleBtn);
