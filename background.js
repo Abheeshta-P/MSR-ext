@@ -298,7 +298,7 @@ async function doMobile() {
     setTimeout(() => {
       chrome.tabs.remove(tabId).catch(() => {});
       chrome.storage.local.set({ searchTabId: null });
-    }, 4000);
+    }, 10000);
 
     if (next < data.mobileTotal) {
       chrome.alarms.create(ALARM_MOBILE, { delayInMinutes: delay });
