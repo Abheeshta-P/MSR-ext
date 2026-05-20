@@ -44,18 +44,21 @@ function updateUI(data) {
 
   // Status Pill
   const pill = qs("statusPill");
-  pill.textContent = sessionActive ? (phase === "pc" ? "DESKTOP" : "MOBILE") : (phase === "done" ? "DONE" : "IDLE");
+  const isPaused = !sessionActive && (phase === "pc" || phase === "mobile");
+  
+  pill.textContent = sessionActive ? (phase === "pc" ? "DESKTOP" : "MOBILE") : (phase === "done" ? "DONE" : (isPaused ? "PAUSED" : "IDLE"));
   pill.className = "status-pill";
-  if (sessionActive) pill.classList.add("active");
+  if (sessionActive || isPaused) pill.classList.add("active");
   if (phase === "done") pill.classList.add("done");
 
   // Current Term
   const term = phase === "pc" ? pcCurrentTerm : (phase === "mobile" ? mobileCurrentTerm : "");
-  qs("termText").textContent = sessionActive ? (term || "...") : (phase === "done" ? "Done" : "—");
+  qs("termText").textContent = sessionActive ? (term || "...") : (phase === "done" ? "Done" : (isPaused ? "Paused" : "—"));
 
   // Stats
   qs("pointsVal").textContent = ((pcCompleted + mobileCompleted) * 5);
   qs("lastRun").textContent = "Last run: " + lastSessionDate;
+  qs("footerStats").textContent = `${pcTotal} PC + ${mobileTotal} Mob`;
 
   // Banner
   qs("doneBanner").classList.toggle("visible", phase === "done");
@@ -66,7 +69,7 @@ function updateUI(data) {
 
   // Main Button
   const btn = qs("mainBtn");
-  btn.textContent = sessionActive ? "Stop Session" : (phase === "done" ? "Restart Session" : "Start Session");
+  btn.textContent = sessionActive ? "Stop Session" : (isPaused ? "Resume Session" : (phase === "done" ? "Start New Run" : "Start Session"));
   btn.className = sessionActive ? "btn btn-stop" : "btn";
 
   // Timer
@@ -192,6 +195,19 @@ qs("saveSettings").addEventListener("click", async () => {
     btn.style.background = "";
     toggleDrawer(false);
   }, 1000);
+});
+
+qs("resetProgress").addEventListener("click", async () => {
+  if (confirm("Reset all search progress back to zero?")) {
+    await chrome.storage.local.set({
+      pcCompleted: 0,
+      mobileCompleted: 0,
+      phase: "idle",
+      sessionActive: false
+    });
+    getStatus().then(updateUI);
+    toggleDrawer(false);
+  }
 });
 
 // Initial load

@@ -124,9 +124,25 @@ async function injectInteraction(tabId) {
 // ─── SESSION START ─────────────────────────
 
 async function startSession() {
-  const { sessionActive } = await chrome.storage.local.get("sessionActive");
-  if (sessionActive) return { status: "already_running" };
+  const data = await chrome.storage.local.get(["sessionActive", "phase"]);
+  if (data.sessionActive) return { status: "already_running" };
 
+  // Resume logic
+  if (data.phase === "pc") {
+    await chrome.storage.local.set({ sessionActive: true });
+    chrome.alarms.create(ALARM_PC, { delayInMinutes: 0.02 });
+    broadcastStatus();
+    return { status: "resumed" };
+  }
+  if (data.phase === "mobile") {
+    await chrome.storage.local.set({ sessionActive: true });
+    await setMobileUA(true);
+    chrome.alarms.create(ALARM_MOBILE, { delayInMinutes: 0.02 });
+    broadcastStatus();
+    return { status: "resumed" };
+  }
+
+  // Fresh start
   const settings = await chrome.storage.local.get([
     "pcTotal", "mobileTotal", "customTerms"
   ]);
@@ -135,28 +151,24 @@ async function startSession() {
   const mobileTotal = settings.mobileTotal || 30;
   const terms = (settings.customTerms && settings.customTerms.length > 0) ? settings.customTerms : SEARCH_TERMS;
 
-  await setMobileUA(false); // Ensure clean start
+  await setMobileUA(false);
 
   await chrome.storage.local.set({
     sessionActive: true,
     phase: "pc",
-
     pcTotal: pcTotal,
     pcCompleted: 0,
     pcQueue: shuffle(terms).slice(0, pcTotal),
     pcCurrentTerm: "",
     searchTabId: null,
-
     mobileTotal: mobileTotal,
     mobileCompleted: 0,
     mobileQueue: shuffle(terms).slice(0, mobileTotal),
     mobileCurrentTerm: "",
-
     nextSearchIn: 0,
   });
 
   broadcastStatus();
-
   chrome.alarms.clearAll();
   chrome.alarms.create(ALARM_PC, { delayInMinutes: 0.02 });
 
@@ -187,7 +199,7 @@ async function doPC() {
       tabId = tab.id;
     }
 
-    await new Promise(r => setTimeout(r, 2000)); // Wait for load
+    await new Promise(r => setTimeout(r, 2000));
     await injectInteraction(tabId);
 
     const next = data.pcCompleted + 1;
@@ -209,7 +221,7 @@ async function doPC() {
       startMobile();
     }
   } catch {
-    endSession();
+    stopSession();
   }
 }
 
@@ -223,7 +235,6 @@ async function startMobile() {
   });
 
   broadcastStatus();
-
   chrome.alarms.create(ALARM_MOBILE, { delayInMinutes: 0.02 });
 }
 
@@ -237,6 +248,8 @@ async function doMobile() {
   }
 
   const term = data.mobileQueue[data.mobileCompleted];
+  if (!term) return endSession();
+
   const url = `https://www.bing.com/search?q=${encodeURIComponent(term)}&form=QBRE`;
 
   let tabId = data.searchTabId;
@@ -249,7 +262,7 @@ async function doMobile() {
       tabId = tab.id;
     }
 
-    await new Promise(r => setTimeout(r, 2000)); // Wait for load
+    await new Promise(r => setTimeout(r, 2000));
     await injectInteraction(tabId);
 
     const next = data.mobileCompleted + 1;
@@ -281,12 +294,14 @@ async function stopSession() {
   chrome.alarms.clearAll();
   await setMobileUA(false);
 
-  const { searchTabId } = await chrome.storage.local.get("searchTabId");
-  if (searchTabId) chrome.tabs.remove(searchTabId).catch(() => {});
+  const data = await chrome.storage.local.get(["searchTabId", "pcCompleted", "pcTotal", "mobileCompleted", "mobileTotal", "phase"]);
+  if (data.searchTabId) chrome.tabs.remove(data.searchTabId).catch(() => {});
+
+  const isFinished = (data.pcCompleted >= data.pcTotal) && (data.mobileCompleted >= data.mobileTotal);
 
   await chrome.storage.local.set({
     sessionActive: false,
-    phase: "done",
+    phase: isFinished ? "done" : (data.phase || "paused"),
     nextSearchIn: 0,
     searchTabId: null
   });
@@ -332,4 +347,4 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
     chrome.storage.local.get(null).then(sendResponse);
   }
   return true;
-});
+});;

@@ -25,6 +25,7 @@
       color: var(--text);
       font-family: 'Space Mono', monospace;
       padding: 20px;
+      overflow: hidden;
     }
 
     .header {
@@ -34,12 +35,31 @@
       margin-bottom: 24px;
     }
 
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .logo {
       font-weight: 700;
       font-size: 14px;
       letter-spacing: -0.02em;
     }
     .logo span { color: var(--accent); }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+      transition: color 0.2s;
+      padding: 0;
+      display: flex;
+    }
+    .settings-btn:hover { color: var(--accent); }
+    .settings-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .status-pill {
       font-size: 10px;
@@ -205,6 +225,8 @@
       transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       z-index: 100;
       box-shadow: 0 -10px 20px rgba(0,0,0,0.5);
+      max-height: 90vh;
+      overflow-y: auto;
     }
     .drawer.open { bottom: 0; }
 
@@ -263,36 +285,35 @@
 
     .save-btn {
       width: 100%;
-      padding: 8px;
+      padding: 10px;
       background: var(--accent);
       color: var(--bg);
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       font-family: inherit;
       font-weight: 700;
       font-size: 10px;
       cursor: pointer;
       text-transform: uppercase;
+      margin-top: 8px;
     }
 
-    .settings-btn {
-      background: none;
-      border: none;
-      color: var(--muted);
+    .reset-prog-btn {
+      width: 100%;
+      padding: 8px;
+      background: transparent;
+      color: var(--red);
+      border: 1px solid var(--red);
+      border-radius: 6px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 9px;
       cursor: pointer;
-      font-size: 14px;
-      transition: color 0.2s;
-      padding: 0;
-      display: flex;
+      text-transform: uppercase;
+      margin-bottom: 8px;
     }
-    .settings-btn:hover { color: var(--accent); }
-    .settings-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .reset-prog-btn:hover { background: var(--red); color: var(--bg); }
 
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
   </style>
 </head>
 <body>
@@ -367,19 +388,18 @@
     </div>
     <input type="file" id="fileInput" accept=".txt" style="display: none;">
 
+    <button id="resetProgress" class="reset-prog-btn">Reset All Progress</button>
     <button id="saveSettings" class="save-btn">Save Settings</button>
   </div>
 
   <div class="footer">
     <div id="lastRun" class="last-run">Last run: Never</div>
     <div class="footer-links">
-      <span>30 PC + 30 Mob</span>
+      <span id="footerStats">—</span>
       <a href="https://rewards.microsoft.com" target="_blank">Dashboard ↗</a>
     </div>
   </div>
 
   <script src="popup.js"></script>
-</body>
-</html>ipt>
 </body>
 </html>
