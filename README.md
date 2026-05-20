@@ -1,7 +1,15 @@
 # 🎯 MS Rewards Auto-Searcher — Edge Extension
 
-Automatically runs **30 human-paced Bing searches** on your behalf to earn Microsoft Rewards points daily.
+Automatically runs **human-paced Bing searches** on both Desktop and Mobile to earn Microsoft Rewards points daily.
 
+## ✨ Features
+
+- **Dual-Phase Search**: Automatically completes both PC and Mobile search quotas.
+- **Human-Like Behavior**: Random delays, smooth scrolling, and interaction injection to mimic real user behavior.
+- **Customizable Quotas**: Set your own target for PC and Mobile searches.
+- **Adjustable Delays**: Configure minimum and maximum wait times between searches.
+- **Custom Wordlists**: Upload your own `.txt` file of search terms or use the built-in tech/news terms.
+- **Progress Tracking**: Real-time progress bars, timer countdowns, and session history.
 
 ## 📦 Installation (Microsoft Edge)
 
@@ -12,49 +20,40 @@ Automatically runs **30 human-paced Bing searches** on your behalf to earn Micro
 5. Select the unzipped folder.
 6. The extension icon appears in your toolbar. **Pin it** for easy access.
 
-
 ## 🚀 How to Use
 
 1. **Sign in** to your Microsoft account on Bing first (`bing.com`).
 2. Click the extension icon in Edge.
 3. Hit **▶ START SESSION**.
-4. The extension opens a Bing tab and runs 30 searches automatically, spaced **20–40 seconds apart** to appear human-like.
-5. Once done, you'll see a notification and the progress ring turns full.
+4. The extension will:
+    - Run PC searches in a background tab.
+    - Switch to Mobile mode (User-Agent spoofing) and run mobile searches.
+    - Automatically close tabs and inject natural interactions.
+5. Once done, the status will change to **DONE**.
 6. Check your points at [rewards.microsoft.com](https://rewards.microsoft.com).
 
+## ⚙️ Settings
 
-## ⚙️ Details
-
-| Setting | Value |
-|--------|-------|
-| Searches per session | 30 (Level 2 daily max) |
-| Delay between searches | 20–40 seconds (random) |
-| Search topics | Tech & News (30 unique terms) |
-| Browser tab | Single reused tab (non-active) |
-
-
-## ⚠️ Important Notes
-
-- You must be **signed in to your Microsoft account** in Edge for searches to count.
-- Microsoft awards points for **real user searches** — this extension mimics natural behavior.
-- Do **not** use a VPN while running (violates Microsoft Rewards terms).
-- Run **once per day** — 30 is the Level 2 daily maximum for PC searches.
-- Estimated points: ~150 pts/day (5 pts × 30 searches).
-
+Click the **gear icon** ⚙️ to customize:
+- **PC/Mobile Totals**: Default is 30/20 (matches standard Level 2 limits).
+- **Delays**: Random range (e.g., 20–40s) for better safety.
+- **Custom Terms**: Drop a `.txt` file with one search term per line.
 
 ## 🔑 Permissions Used
 
 | Permission | Why |
 |-----------|-----|
-| `tabs` | Open/update Bing search tab |
-| `storage` | Save session progress |
+| `tabs` | Open/close Bing search tabs |
+| `storage` | Save session progress and settings |
+| `alarms` | Handle precise search timing |
 | `notifications` | Notify when session is complete |
-| `scripting` | Required by Manifest V3 |
-| `host_permissions: bing.com` | Navigate to Bing searches |
+| `scripting` | Inject human-like interactions (scrolling) |
+| `declarativeNetRequest` | Spoof Mobile User-Agent for mobile points |
+| `host_permissions: bing.com` | Navigate and modify headers for Bing |
 
+## ⚠️ Important Notes
 
-## 💡 Tips for Max Points
-
-- Complete the **Daily Set** (quizzes/polls) on `rewards.microsoft.com` for extra points.
-- Run the extension daily for streak bonuses.
+- You must be **signed in to your Microsoft account** in Edge for searches to count.
+- Microsoft awards points for **real user searches** — this extension mimics natural behavior, but use it responsibly.
+- Do **not** use a VPN while running (violates Microsoft Rewards terms).
 - Make sure your Edge browser profile is linked to your Microsoft account.
