@@ -147,9 +147,9 @@ async function startSession() {
     "pcTotal", "mobileTotal", "customTerms"
   ]);
 
-  const pcTotal = settings.pcTotal || 30;
-  const mobileTotal = settings.mobileTotal || 30;
   const terms = (settings.customTerms && settings.customTerms.length > 0) ? settings.customTerms : SEARCH_TERMS;
+  const pcTotal = Math.min(settings.pcTotal || 30, terms.length);
+  const mobileTotal = Math.min(settings.mobileTotal || 30, terms.length);
 
   await setMobileUA(false);
 
@@ -187,19 +187,24 @@ async function doPC() {
   }
 
   const term = data.pcQueue[data.pcCompleted];
+  if (!term) return startMobile();
+
   const url = `https://www.bing.com/search?q=${encodeURIComponent(term)}&form=QBRE`;
 
-  let tabId = data.searchTabId;
+  // 1. Force close ANY previous search tab before starting
+  if (data.searchTabId) {
+    chrome.tabs.remove(data.searchTabId).catch(() => {});
+  }
 
   try {
-    if (tabId) {
-      await chrome.tabs.update(tabId, { url });
-    } else {
-      const tab = await chrome.tabs.create({ url, active: false });
-      tabId = tab.id;
-    }
+    // 2. Create a COMPLETELY NEW tab
+    const tab = await chrome.tabs.create({ url, active: false });
+    const tabId = tab.id;
 
-    await new Promise(r => setTimeout(r, 2000));
+    // 3. Save the new tab ID immediately
+    await chrome.storage.local.set({ searchTabId: tabId });
+
+    await new Promise(r => setTimeout(r, 3000)); // Wait for initial load
     await injectInteraction(tabId);
 
     const next = data.pcCompleted + 1;
@@ -209,11 +214,16 @@ async function doPC() {
     await chrome.storage.local.set({
       pcCompleted: next,
       pcCurrentTerm: term,
-      searchTabId: tabId,
       nextSearchIn,
     });
 
     broadcastStatus();
+
+    // 4. Close this tab after interaction is done (don't wait for next search)
+    setTimeout(() => {
+      chrome.tabs.remove(tabId).catch(() => {});
+      chrome.storage.local.set({ searchTabId: null });
+    }, 4000);
 
     if (next < data.pcTotal) {
       chrome.alarms.create(ALARM_PC, { delayInMinutes: delay });
@@ -228,10 +238,14 @@ async function doPC() {
 // ─── MOBILE ────────────────────────────────
 
 async function startMobile() {
+  const { searchTabId } = await chrome.storage.local.get("searchTabId");
+  if (searchTabId) chrome.tabs.remove(searchTabId).catch(() => {});
+
   await setMobileUA(true);
   await chrome.storage.local.set({
     phase: "mobile",
     nextSearchIn: 0,
+    searchTabId: null
   });
 
   broadcastStatus();
@@ -252,17 +266,20 @@ async function doMobile() {
 
   const url = `https://www.bing.com/search?q=${encodeURIComponent(term)}&form=QBRE`;
 
-  let tabId = data.searchTabId;
+  // 1. Force close ANY previous search tab
+  if (data.searchTabId) {
+    chrome.tabs.remove(data.searchTabId).catch(() => {});
+  }
 
   try {
-    if (tabId) {
-      await chrome.tabs.update(tabId, { url });
-    } else {
-      const tab = await chrome.tabs.create({ url, active: false });
-      tabId = tab.id;
-    }
+    // 2. Create NEW tab
+    const tab = await chrome.tabs.create({ url, active: false });
+    const tabId = tab.id;
 
-    await new Promise(r => setTimeout(r, 2000));
+    // 3. Save new ID
+    await chrome.storage.local.set({ searchTabId: tabId });
+
+    await new Promise(r => setTimeout(r, 3000));
     await injectInteraction(tabId);
 
     const next = data.mobileCompleted + 1;
@@ -272,11 +289,16 @@ async function doMobile() {
     await chrome.storage.local.set({
       mobileCompleted: next,
       mobileCurrentTerm: term,
-      searchTabId: tabId,
       nextSearchIn,
     });
 
     broadcastStatus();
+
+    // 4. Close tab immediately after use
+    setTimeout(() => {
+      chrome.tabs.remove(tabId).catch(() => {});
+      chrome.storage.local.set({ searchTabId: null });
+    }, 4000);
 
     if (next < data.mobileTotal) {
       chrome.alarms.create(ALARM_MOBILE, { delayInMinutes: delay });
@@ -301,7 +323,7 @@ async function stopSession() {
 
   await chrome.storage.local.set({
     sessionActive: false,
-    phase: isFinished ? "done" : (data.phase || "paused"),
+    phase: isFinished ? "done" : (data.phase || "idle"),
     nextSearchIn: 0,
     searchTabId: null
   });
@@ -350,7 +372,6 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
     (async () => {
       const data = await chrome.storage.local.get(null);
       const terms = (msg.customTerms && msg.customTerms.length > 0) ? msg.customTerms : SEARCH_TERMS;
-      
       const pcTotal = Math.min(msg.pcTotal || 30, terms.length);
       const mobileTotal = Math.min(msg.mobileTotal || 30, terms.length);
       
@@ -360,7 +381,6 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
         customTerms: msg.customTerms,
         pcQueue: shuffle(terms).slice(0, pcTotal),
         mobileQueue: shuffle(terms).slice(0, mobileTotal),
-        // Safety: ensure progress doesn't exceed new totals
         pcCompleted: Math.min(data.pcCompleted, pcTotal),
         mobileCompleted: Math.min(data.mobileCompleted, mobileTotal)
       });
@@ -370,4 +390,4 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
     return true;
   }
   return true;
-});;
+});
