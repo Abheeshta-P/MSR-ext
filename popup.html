@@ -192,11 +192,115 @@
       justify-content: space-between;
     }
     .footer-links a { color: var(--accent); text-decoration: none; }
+
+    /* Settings Drawer Styles */
+    .drawer {
+      position: fixed;
+      bottom: -100%;
+      left: 0;
+      width: 100%;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 20px;
+      transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 100;
+      box-shadow: 0 -10px 20px rgba(0,0,0,0.5);
+    }
+    .drawer.open { bottom: 0; }
+
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .drawer-title { font-size: 12px; font-weight: 700; color: var(--accent); }
+    
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .setting-item { display: flex; flex-direction: column; gap: 4px; }
+    .setting-label { font-size: 8px; color: var(--muted); text-transform: uppercase; }
+    .setting-input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 10px;
+      padding: 6px;
+      border-radius: 4px;
+      outline: none;
+    }
+    .setting-input:focus { border-color: var(--accent); }
+
+    .drop-zone {
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+      font-size: 8px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .drop-zone:hover { border-color: var(--accent); color: var(--accent); background: rgba(0, 229, 255, 0.03); }
+    .drop-zone.dragover { border-color: var(--accent); color: var(--accent); background: rgba(0, 229, 255, 0.08); }
+    .drop-zone.loaded { border: 1px solid var(--accent); color: var(--text); }
+    .drop-zone.loaded:hover { border-color: var(--green); color: var(--green); }
+
+    .reset-link {
+      font-size: 7px;
+      color: var(--accent);
+      text-decoration: underline;
+      margin-top: 4px;
+      cursor: pointer;
+    }
+    .reset-link:hover { color: var(--green); }
+
+    .save-btn {
+      width: 100%;
+      padding: 8px;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: 4px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 10px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+      transition: color 0.2s;
+      padding: 0;
+      display: flex;
+    }
+    .settings-btn:hover { color: var(--accent); }
+    .settings-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="logo">REWARD<span>AS</span></div>
+    <div class="header-left">
+      <div class="logo">REWARD<span>AS</span></div>
+      <button id="settingsBtn" class="settings-btn" title="Settings">⚙️</button>
+    </div>
     <div id="statusPill" class="status-pill">IDLE</div>
   </div>
 
@@ -232,6 +336,40 @@
 
   <button id="mainBtn" class="btn">Start Session</button>
 
+  <div id="settingsDrawer" class="drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">SETTINGS</div>
+      <button id="closeSettings" class="settings-btn" title="Close">✕</button>
+    </div>
+    
+    <div class="settings-grid">
+      <div class="setting-item">
+        <div class="setting-label">PC Total</div>
+        <input type="number" id="pcTotalInput" class="setting-input" value="30" min="1" max="100">
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">Mob Total</div>
+        <input type="number" id="mobileTotalInput" class="setting-input" value="30" min="1" max="100">
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">Min Delay (s)</div>
+        <input type="number" id="minDelayInput" class="setting-input" value="21" min="1" max="600">
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">Max Delay (s)</div>
+        <input type="number" id="maxDelayInput" class="setting-input" value="40" min="1" max="600">
+      </div>
+    </div>
+
+    <div id="dropZone" class="drop-zone">
+      <span id="dzText">Click or Drop .txt file<br>for custom terms</span>
+      <div id="resetTerms" class="reset-link" style="display: none;">Reset to defaults</div>
+    </div>
+    <input type="file" id="fileInput" accept=".txt" style="display: none;">
+
+    <button id="saveSettings" class="save-btn">Save Settings</button>
+  </div>
+
   <div class="footer">
     <div id="lastRun" class="last-run">Last run: Never</div>
     <div class="footer-links">
@@ -241,5 +379,7 @@
   </div>
 
   <script src="popup.js"></script>
+</body>
+</html>ipt>
 </body>
 </html>
