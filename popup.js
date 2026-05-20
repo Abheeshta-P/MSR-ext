@@ -39,6 +39,9 @@ function updateUI(data) {
   // Counts & Progress
   qs("pcCount").textContent = pcCompleted;
   qs("mobileCount").textContent = mobileCompleted;
+  qs("pcTotalLabel").textContent = pcTotal;
+  qs("mobileTotalLabel").textContent = mobileTotal;
+  
   qs("pcBar").style.width = (pcCompleted / pcTotal) * 100 + "%";
   qs("mobileBar").style.width = (mobileCompleted / mobileTotal) * 100 + "%";
 
@@ -182,8 +185,15 @@ qs("saveSettings").addEventListener("click", async () => {
   const minDelay = parseInt(qs("minDelayInput").value);
   const maxDelay = parseInt(qs("maxDelayInput").value);
 
-  await chrome.storage.local.set({
-    pcTotal, mobileTotal, minDelay, maxDelay, customTerms
+  // Update base settings
+  await chrome.storage.local.set({ minDelay, maxDelay, pcTotal, mobileTotal, customTerms });
+
+  // Refresh active queues if session is paused or active
+  await chrome.runtime.sendMessage({ 
+    action: "REFRESH_QUEUES", 
+    pcTotal, 
+    mobileTotal, 
+    customTerms 
   });
 
   const btn = qs("saveSettings");

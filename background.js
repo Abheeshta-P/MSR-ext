@@ -346,5 +346,28 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
   if (msg.action === "GET_STATUS") {
     chrome.storage.local.get(null).then(sendResponse);
   }
+  if (msg.action === "REFRESH_QUEUES") {
+    (async () => {
+      const data = await chrome.storage.local.get(null);
+      const terms = (msg.customTerms && msg.customTerms.length > 0) ? msg.customTerms : SEARCH_TERMS;
+      
+      const pcTotal = Math.min(msg.pcTotal || 30, terms.length);
+      const mobileTotal = Math.min(msg.mobileTotal || 30, terms.length);
+      
+      await chrome.storage.local.set({
+        pcTotal,
+        mobileTotal,
+        customTerms: msg.customTerms,
+        pcQueue: shuffle(terms).slice(0, pcTotal),
+        mobileQueue: shuffle(terms).slice(0, mobileTotal),
+        // Safety: ensure progress doesn't exceed new totals
+        pcCompleted: Math.min(data.pcCompleted, pcTotal),
+        mobileCompleted: Math.min(data.mobileCompleted, mobileTotal)
+      });
+      broadcastStatus();
+      sendResponse({ status: "refreshed" });
+    })();
+    return true;
+  }
   return true;
 });;
