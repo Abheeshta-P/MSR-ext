@@ -180,10 +180,58 @@ dz.addEventListener("drop", (e) => {
 
 // Save Settings
 qs("saveSettings").addEventListener("click", async () => {
-  const pcTotal = parseInt(qs("pcTotalInput").value);
-  const mobileTotal = parseInt(qs("mobileTotalInput").value);
-  const minDelay = parseInt(qs("minDelayInput").value);
-  const maxDelay = parseInt(qs("maxDelayInput").value);
+  let pcTotal = parseInt(qs("pcTotalInput").value) || 30;
+  let mobileTotal = parseInt(qs("mobileTotalInput").value) || 30;
+  let minDelay = parseInt(qs("minDelayInput").value) || 21;
+  let maxDelay = parseInt(qs("maxDelayInput").value) || 40;
+
+  // ─── Safety Guardrails ───────────────────
+  
+  // 1. Min Delay safety (don't go below 15s for account safety)
+  if (minDelay < 15) {
+    minDelay = 15;
+    qs("minDelayInput").value = 15;
+  }
+
+  // 2. Logic Check: Max must be > Min
+  if (maxDelay <= minDelay) {
+    maxDelay = minDelay + 10; // Give it a 10s window minimum
+    qs("maxDelayInput").value = maxDelay;
+  }
+
+  // 3. Search Cap (Red flag prevention)
+  if (pcTotal > 100) {
+    pcTotal = 100;
+    qs("pcTotalInput").value = 100;
+  }
+  if (pcTotal < 1) {
+    pcTotal = 1;
+    qs("pcTotalInput").value = 1;
+  }
+  
+  if (mobileTotal > 100) {
+    mobileTotal = 100;
+    qs("mobileTotalInput").value = 100;
+  }
+  if (mobileTotal < 1) {
+    mobileTotal = 1;
+    qs("mobileTotalInput").value = 1;
+  }
+
+  if (maxDelay > 3600) {
+    maxDelay = 3600;
+    qs("maxDelayInput").value = 3600;
+  }
+  
+  if (minDelay > 3590) {
+    minDelay = 3590;
+    qs("minDelayInput").value = 3590;
+  }
+
+  // 4. Empty Wordlist Check
+  if (customTerms.length === 0 && qs("dropZone").classList.contains("loaded")) {
+    alert("Warning: Custom list is empty. Using defaults.");
+  }
 
   // Update base settings
   await chrome.storage.local.set({ minDelay, maxDelay, pcTotal, mobileTotal, customTerms });
